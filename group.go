@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
+	"strconv"
 )
 
 var groups = map[string]string{}
@@ -22,13 +23,17 @@ func init() {
 	}
 }
 
-func LookupGroup(gname string) (string, error) {
-	gid, ok := groups[gname]
+func LookupGroup(gname *string) (string, int, error) {
+	if gname == nil || *gname == "" {
+		return "", -1, nil
+	}
+	gids, ok := groups[*gname]
 	if !ok {
 		if len(groups) == 0 {
-			return "", errors.New("Initializing group information failed")
+			return "", 0, errors.New("Initializing group information failed")
 		}
-		return "", errors.New("Group not found")
+		return "", 0, errors.New("Group not found")
 	}
-	return gid, nil
+	gid, err := strconv.ParseInt(gids, 10, 32)
+	return gids, int(gid), err
 }

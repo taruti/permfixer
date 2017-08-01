@@ -16,7 +16,8 @@ var userp = flag.String("user", "", "User for chown")
 var groupp = flag.String("group", "", "Group for chgrp")
 var permfp = flag.String("permf", "", "Permissions for chmod in octal for files")
 var permdp = flag.String("permd", "", "Permissions for chmod in octal for directories")
-var uid, gid, fmode, dmode uint32
+var uid, gid int
+var fmode, dmode uint32
 
 func main() {
 	flag.Parse()
@@ -32,25 +33,15 @@ func main() {
 	}
 	dmode = uint32(t)
 
-	u, e := LookupUser(*userp)
+	_, uid, e = LookupUser(userp)
 	if e != nil {
 		log.Fatal("Error looking up user", *userp, e)
 	}
-	t, e = strconv.ParseInt(u, 10, 32)
-	if e != nil {
-		log.Fatal("Error parsing uid for user", *userp, e)
-	}
-	uid = uint32(t)
 
-	g, e := LookupGroup(*groupp)
+	_, gid, e = LookupGroup(groupp)
 	if e != nil {
 		log.Fatal("Error looking up group", *groupp, e)
 	}
-	t, e = strconv.ParseInt(g, 10, 32)
-	if e != nil {
-		log.Fatal("Error parsing gid for group", *groupp, e)
-	}
-	gid = uint32(t)
 
 	for {
 		e = filepath.Walk(*dirp, walker)
@@ -63,8 +54,8 @@ func main() {
 
 func walker(path string, info os.FileInfo, err error) error {
 	st := info.Sys().(*syscall.Stat_t)
-	if st.Uid != uid || st.Gid != gid {
-		e := syscall.Chown(path, int(uid), int(gid))
+	if (uid != -1 && int(st.Uid) != uid) || (gid != -1 && int(st.Gid) != gid) {
+		e := syscall.Chown(path, uid, gid)
 		if e != nil {
 			log.Println("chown", path, e)
 		}

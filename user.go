@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
+	"strconv"
 )
 
 var users = map[string]string{}
@@ -22,13 +23,17 @@ func init() {
 	}
 }
 
-func LookupUser(uname string) (string, error) {
-	uid, ok := users[uname]
+func LookupUser(uname *string) (string, int, error) {
+	if uname == nil || *uname=="" {
+		return "", -1, nil
+	}
+	uids, ok := users[*uname]
 	if !ok {
 		if len(users) == 0 {
-			return "", errors.New("Initializing user information failed")
+			return "", 0, errors.New("Initializing user information failed")
 		}
-		return "", errors.New("User not found")
+		return "", 0, errors.New("User not found")
 	}
-	return uid, nil
+	uid, err := strconv.ParseInt(uids, 10, 32)
+	return uids, int(uid), err
 }
