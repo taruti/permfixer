@@ -4,31 +4,40 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
+	"strconv"
 )
 
-var groups = map[string]string{}
+var groups = readUserMap("/etc/group")
 
-func init() {
-	content, err := ioutil.ReadFile("/etc/group")
+type userMapFile struct {
+	m map[string]uint32
+}
+
+func readUserMap(filename string) userMapFile {
+	um := userMapFile{m: map[string]uint32{}}
+	content, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return
+		return um
 	}
 	rows := bytes.Split(content, []byte("\n"))
 	for _, row := range rows {
 		cols := bytes.Split(row, []byte(":"))
 		if len(cols) == 4 {
-			groups[string(cols[0])] = string(cols[2])
+			if v, err := strconv.Atoi(string(cols[2])); err == nil {
+				um.m[string(cols[0])] = uint32(v)
+			}
 		}
 	}
+	return um
 }
 
-func LookupGroup(gname string) (string, error) {
-	gid, ok := groups[gname]
+func (u *userMapFile) Lookup(name string) (uint32, error) {
+	id, ok := u.m[name]
 	if !ok {
-		if len(groups) == 0 {
-			return "", errors.New("Initializing group information failed")
+		if len(u.m) == 0 {
+			return 0, errors.New("Initializing user/group information failed")
 		}
-		return "", errors.New("Group not found")
+		return 0, errors.New("User/Group not found")
 	}
-	return gid, nil
+	return id, nil
 }

@@ -14,50 +14,54 @@ import (
 var secp = flag.Int("sec", 60*60, "Time between checks in seconds")
 var userp = flag.String("user", "", "User for chown")
 var groupp = flag.String("group", "", "Group for chgrp")
-var permfp = flag.String("permf", "", "Permissions for chmod in octal for files")
-var permdp = flag.String("permd", "", "Permissions for chmod in octal for directories")
+var permf = OctalFlag(0)
+var permd = OctalFlag(0)
 var uid, gid, fmode, dmode uint32
+
+type OctalFlag uint32
+
+func (o *OctalFlag) String() string {
+	return fmt.Sprint(uint32(*o))
+}
+func (o *OctalFlag) Set(s string) error {
+	v, err := strconv.ParseInt(s, 8, 32)
+	if err != nil {
+		return err
+	}
+	*o = OctalFlag(uint32(v))
+	return nil
+}
 
 func init() {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s: [flags] [directories]\n", os.Args[0])
 		flag.PrintDefaults()
 	}
+	flag.Var(&permf, "permf", "Permissions for chmod in octal for files")
+	flag.Var(&permd, "permd", "Permissions for chmod in octal for directories")
 }
 
 func main() {
 	flag.Parse()
 
-	t, e := strconv.ParseInt(*permfp, 8, 32)
-	if e != nil {
-		log.Fatal("Error parsing octal parameter permf", e)
-	}
-	fmode = uint32(t)
-	t, e = strconv.ParseInt(*permdp, 8, 32)
-	if e != nil {
-		log.Fatal("Error parsing octal parameter permd", e)
-	}
-	dmode = uint32(t)
+	fmode = uint32(permf)
+	dmode = uint32(permd)
 
-	u, e := LookupUser(*userp)
-	if e != nil {
-		log.Fatal("Error looking up user", *userp, e)
+	var err error
+	if *userp != "" {
+		uid, err = users.Lookup(*userp)
+		if err != nil {
+			log.Fatalf("Error looking up user %q: %v", *userp, err)
+		}
 	}
-	t, e = strconv.ParseInt(u, 10, 32)
-	if e != nil {
-		log.Fatal("Error parsing uid for user", *userp, e)
-	}
-	uid = uint32(t)
 
-	g, e := LookupGroup(*groupp)
-	if e != nil {
-		log.Fatal("Error looking up group", *groupp, e)
+	if *groupp != "" {
+		gid, err = groups.Lookup(*groupp)
+		if err != nil {
+			log.Fatalf("Error looking up group: %q: %v", *groupp, err)
+		}
 	}
-	t, e = strconv.ParseInt(g, 10, 32)
-	if e != nil {
-		log.Fatal("Error parsing gid for group", *groupp, e)
-	}
-	gid = uint32(t)
+
 	for _, dir := range flag.Args() {
 		dir := dir
 		go work(dir)
