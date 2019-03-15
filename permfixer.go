@@ -90,6 +90,10 @@ func doesIdNeedChange(want int, have uint32) bool {
 }
 
 func walker(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		log.Println("Walk error: ", err)
+		return nil
+	}
 	st := info.Sys().(*syscall.Stat_t)
 	if doesIdNeedChange(uid, st.Uid) || doesIdNeedChange(gid, st.Gid) {
 		e := syscall.Chown(path, uid, gid)
