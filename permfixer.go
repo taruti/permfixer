@@ -16,7 +16,9 @@ var userp = flag.String("user", "", "User for chown")
 var groupp = flag.String("group", "", "Group for chgrp")
 var permf = OctalFlag(0)
 var permd = OctalFlag(0)
-var uid, gid, fmode, dmode uint32
+var fmode, dmode uint32
+var uid = -1
+var gid = -1
 
 type OctalFlag uint32
 
@@ -48,19 +50,17 @@ func main() {
 	dmode = uint32(permd)
 
 	var err error
-	if *userp != "" {
-		uid, err = users.Lookup(*userp)
-		if err != nil {
-			log.Fatalf("Error looking up user %q: %v", *userp, err)
-		}
+	uid, err = users.Lookup(*userp)
+	if err != nil {
+		log.Fatalf("Error looking up user %q: %v", *userp, err)
 	}
 
-	if *groupp != "" {
-		gid, err = groups.Lookup(*groupp)
-		if err != nil {
-			log.Fatalf("Error looking up group: %q: %v", *groupp, err)
-		}
+	gid, err = groups.Lookup(*groupp)
+	if err != nil {
+		log.Fatalf("Error looking up group: %q: %v", *groupp, err)
 	}
+
+	log.Printf("Set uid=%d gid=%d dmode=%o fmode=%o", uid, gid, dmode, fmode)
 
 	if flag.NArg() == 0 {
 		flag.Usage()
@@ -85,10 +85,14 @@ func work(dir string) {
 	}
 }
 
+func doesIdNeedChange(want int, have uint32) bool {
+	return want >= 0 && want != int(have)
+}
+
 func walker(path string, info os.FileInfo, err error) error {
 	st := info.Sys().(*syscall.Stat_t)
-	if st.Uid != uid || st.Gid != gid {
-		e := syscall.Chown(path, int(uid), int(gid))
+	if doesIdNeedChange(uid, st.Uid) || doesIdNeedChange(gid, st.Gid) {
+		e := syscall.Chown(path, uid, gid)
 		if e != nil {
 			log.Println("chown", path, e)
 		}
