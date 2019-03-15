@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -16,6 +17,13 @@ var groupp = flag.String("group", "", "Group for chgrp")
 var permfp = flag.String("permf", "", "Permissions for chmod in octal for files")
 var permdp = flag.String("permd", "", "Permissions for chmod in octal for directories")
 var uid, gid, fmode, dmode uint32
+
+func init() {
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s: [flags] [directories]\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+}
 
 func main() {
 	flag.Parse()
