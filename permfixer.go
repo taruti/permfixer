@@ -10,8 +10,7 @@ import (
 	"time"
 )
 
-var dirp = flag.String("dir", ".", "Directory to fix permissions in recursively")
-var secp = flag.Int("sec", 60, "Time between checks in seconds")
+var secp = flag.Int("sec", 60*60, "Time between checks in seconds")
 var userp = flag.String("user", "", "User for chown")
 var groupp = flag.String("group", "", "Group for chgrp")
 var permfp = flag.String("permf", "", "Permissions for chmod in octal for files")
@@ -51,11 +50,17 @@ func main() {
 		log.Fatal("Error parsing gid for group", *groupp, e)
 	}
 	gid = uint32(t)
+	for _, dir := range flag.Args() {
+		dir := dir
+		go work(dir)
+	}
+}
 
+func work(dir string) {
 	for {
-		e = filepath.Walk(*dirp, walker)
-		if e != nil {
-			log.Println("Walk", *dirp, e)
+		err := filepath.Walk(dir, walker)
+		if err != nil {
+			log.Println("Walk", dir, err)
 		}
 		time.Sleep(time.Duration(*secp) * time.Second)
 	}
