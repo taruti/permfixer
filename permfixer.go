@@ -14,6 +14,8 @@ import (
 var secp = flag.Int("sec", 60*60, "Time between checks in seconds")
 var userp = flag.String("user", "", "User for chown")
 var groupp = flag.String("group", "", "Group for chgrp")
+var verbose = false
+
 var permf = OctalFlag(00660)
 var permd = OctalFlag(02770)
 var fmode, dmode uint32
@@ -41,6 +43,7 @@ func init() {
 	}
 	flag.Var(&permf, "permf", "Permissions for chmod in octal for files")
 	flag.Var(&permd, "permd", "Permissions for chmod in octal for directories")
+	flag.BoolVar(&verbose, "v", false, "Verbose output")
 }
 
 func main() {
@@ -89,6 +92,26 @@ func doesIdNeedChange(want int, have uint32) bool {
 	return want >= 0 && want != int(have)
 }
 
+func chown(path string, uid int, gid int) {
+	if verbose {
+		log.Printf("chown %q %d %d", path, uid, gid)
+	}
+	err := syscall.Chown(path, uid, gid)
+	if err != nil {
+		log.Printf("chown(%q,%d,%d) => ERROR: %v", path, uid, gid, err)
+	}
+}
+
+func chmod(path string, mode uint32) {
+	if verbose {
+		log.Printf("chmod %q %o", path, mode)
+	}
+	err := syscall.Chown(path, uid, gid)
+	if err != nil {
+		log.Printf("chmod(%q,%o) => ERROR: %v", path, mode, err)
+	}
+}
+
 func walker(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		log.Println("Walk error: ", err)
@@ -96,20 +119,14 @@ func walker(path string, info os.FileInfo, err error) error {
 	}
 	st := info.Sys().(*syscall.Stat_t)
 	if doesIdNeedChange(uid, st.Uid) || doesIdNeedChange(gid, st.Gid) {
-		e := syscall.Chown(path, uid, gid)
-		if e != nil {
-			log.Println("chown", path, e)
-		}
+		chown(path, uid, gid)
 	}
 	var mode = fmode
 	if info.IsDir() {
 		mode = dmode
 	}
 	if mode != st.Mode {
-		e := syscall.Chmod(path, mode)
-		if e != nil {
-			log.Println("chmod", path, e)
-		}
+		chmod(path, mode)
 	}
 	return nil
 }
