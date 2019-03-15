@@ -14,8 +14,8 @@ import (
 var secp = flag.Int("sec", 60*60, "Time between checks in seconds")
 var userp = flag.String("user", "", "User for chown")
 var groupp = flag.String("group", "", "Group for chgrp")
-var permf = OctalFlag(0)
-var permd = OctalFlag(0)
+var permf = OctalFlag(00660)
+var permd = OctalFlag(02770)
 var fmode, dmode uint32
 var uid = -1
 var gid = -1
