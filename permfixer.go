@@ -34,7 +34,7 @@ func (o *OctalFlag) Set(s string) error {
 
 func init() {
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s: [flags] [directories]\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s: [flags] {directories}\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.Var(&permf, "permf", "Permissions for chmod in octal for files")
@@ -62,10 +62,17 @@ func main() {
 		}
 	}
 
+	if flag.NArg() == 0 {
+		flag.Usage()
+		os.Exit(1)
+	}
+
 	for _, dir := range flag.Args() {
 		dir := dir
 		go work(dir)
 	}
+
+	select {}
 }
 
 func work(dir string) {

@@ -22,7 +22,7 @@ func readUserMap(filename string) userMapFile {
 	rows := bytes.Split(content, []byte("\n"))
 	for _, row := range rows {
 		cols := bytes.Split(row, []byte(":"))
-		if len(cols) == 4 {
+		if len(cols) >= 4 {
 			if v, err := strconv.Atoi(string(cols[2])); err == nil {
 				um.m[string(cols[0])] = uint32(v)
 			}
