@@ -125,7 +125,7 @@ func walker(path string, info os.FileInfo, err error) error {
 	if info.IsDir() {
 		mode = dmode
 	}
-	if mode != st.Mode {
+	if mode != (st.Mode & 07777) {
 		chmod(path, mode)
 	}
 	return nil
