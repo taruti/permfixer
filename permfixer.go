@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -14,6 +15,7 @@ import (
 var secp = flag.Int("sec", 60*60, "Time between checks in seconds")
 var userp = flag.String("user", "", "User for chown")
 var groupp = flag.String("group", "", "Group for chgrp")
+var delme = flag.Bool("DELME", false, "Remove files/directories named delme")
 var verbose = false
 
 var permf = OctalFlag(00660)
@@ -112,6 +114,15 @@ func chmod(path string, mode uint32) {
 	}
 }
 
+func deleteDir(path string) {
+	err := os.RemoveAll(path)
+	if err != nil {
+		time.Sleep(100 * time.Millisecond)
+		err = os.RemoveAll(path)
+	}
+	log.Printf("Delete path %q => %v", path, err)
+}
+
 func walker(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		log.Println("Walk error: ", err)
@@ -127,6 +138,9 @@ func walker(path string, info os.FileInfo, err error) error {
 	}
 	if mode != (st.Mode & 07777) {
 		chmod(path, mode)
+	}
+	if *delme && info.IsDir() && strings.HasSuffix(path, "/DELME") {
+		deleteDir(path)
 	}
 	return nil
 }
