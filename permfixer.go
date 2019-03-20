@@ -27,7 +27,7 @@ var gid = -1
 type OctalFlag uint32
 
 func (o *OctalFlag) String() string {
-	return fmt.Sprint(uint32(*o))
+	return fmt.Sprintf("0%o", uint32(*o))
 }
 func (o *OctalFlag) Set(s string) error {
 	v, err := strconv.ParseInt(s, 8, 32)
