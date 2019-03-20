@@ -108,7 +108,7 @@ func chmod(path string, mode uint32) {
 	if verbose {
 		log.Printf("chmod %q %o", path, mode)
 	}
-	err := syscall.Chown(path, uid, gid)
+	err := syscall.Chmod(path, mode)
 	if err != nil {
 		log.Printf("chmod(%q,%o) => ERROR: %v", path, mode, err)
 	}
