@@ -48,6 +48,10 @@ func init() {
 	flag.BoolVar(&verbose, "v", false, "Verbose output")
 }
 
+type walkState struct {
+	timeSec int64
+}
+
 func main() {
 	flag.Parse()
 
@@ -81,8 +85,10 @@ func main() {
 }
 
 func work(dir string) {
+	var ws walkState
 	for {
-		err := filepath.Walk(dir, walker)
+		ws.timeSec = int64(time.Now().Unix()) + (15 * 60)
+		err := filepath.Walk(dir, ws.walker)
 		if err != nil {
 			log.Println("Walk", dir, err)
 		}
@@ -123,7 +129,7 @@ func deleteDir(path string) {
 	log.Printf("Delete path %q => %v", path, err)
 }
 
-func walker(path string, info os.FileInfo, err error) error {
+func (ws *walkState) walker(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		log.Println("Walk error: ", err)
 		return nil
@@ -138,6 +144,15 @@ func walker(path string, info os.FileInfo, err error) error {
 	}
 	if mode != (st.Mode & 07777) {
 		chmod(path, mode)
+	}
+	if st.Atim.Sec > ws.timeSec || st.Ctim.Sec > ws.timeSec || st.Mtim.Sec > ws.timeSec {
+		log.Println("Fixing time in future: %q", path)
+		tv := syscall.NsecToTimeval(time.Now().UnixNano())
+		w := []syscall.Timeval{tv,tv,tv}
+		err := syscall.Utimes(path, w)
+		if err != nil {
+			log.Println("Fixing time in future failed %q: %v", path, err)
+		}
 	}
 	if *delme && info.IsDir() && strings.HasSuffix(path, "/DELME") {
 		deleteDir(path)
