@@ -146,12 +146,12 @@ func (ws *walkState) walker(path string, info os.FileInfo, err error) error {
 		chmod(path, mode)
 	}
 	if st.Atim.Sec > ws.timeSec || st.Ctim.Sec > ws.timeSec || st.Mtim.Sec > ws.timeSec {
-		log.Println("Fixing time in future: %q", path)
+		log.Printf("Fixing time in future: %q %#v", path, st)
 		tv := syscall.NsecToTimeval(time.Now().UnixNano())
-		w := []syscall.Timeval{tv,tv,tv}
+		w := []syscall.Timeval{tv,tv}
 		err := syscall.Utimes(path, w)
 		if err != nil {
-			log.Println("Fixing time in future failed %q: %v", path, err)
+			log.Printf("Fixing time in future failed %q: %v", path, err)
 		}
 	}
 	if *delme && info.IsDir() && strings.HasSuffix(path, "/DELME") {
