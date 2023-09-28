@@ -16,6 +16,8 @@ var secp = flag.Int("sec", 60*60, "Time between checks in seconds")
 var userp = flag.String("user", "", "User for chown")
 var groupp = flag.String("group", "", "Group for chgrp")
 var delme = flag.Bool("DELME", false, "Remove files/directories named delme")
+var future = flag.Bool("future", false, "Fix timestamps in the future")
+var touch = flag.Bool("touch", false, "Modify timestamps when changing permissions")
 var verbose = false
 
 var permf = OctalFlag(00660)
@@ -130,6 +132,7 @@ func deleteDir(path string) {
 }
 
 func (ws *walkState) walker(path string, info os.FileInfo, err error) error {
+	modified := false
 	if err != nil {
 		log.Println("Walk error: ", err)
 		return nil
@@ -137,6 +140,7 @@ func (ws *walkState) walker(path string, info os.FileInfo, err error) error {
 	st := info.Sys().(*syscall.Stat_t)
 	if doesIdNeedChange(uid, st.Uid) || doesIdNeedChange(gid, st.Gid) {
 		chown(path, uid, gid)
+		modified = true
 	}
 	var mode = fmode
 	if info.IsDir() {
@@ -144,18 +148,30 @@ func (ws *walkState) walker(path string, info os.FileInfo, err error) error {
 	}
 	if mode != (st.Mode & 07777) {
 		chmod(path, mode)
+		modified = true
 	}
-	if st.Atim.Sec > ws.timeSec || st.Ctim.Sec > ws.timeSec || st.Mtim.Sec > ws.timeSec {
-		log.Printf("Fixing time in future: %q %#v", path, st)
-		tv := syscall.NsecToTimeval(time.Now().UnixNano())
-		w := []syscall.Timeval{tv,tv}
-		err := syscall.Utimes(path, w)
-		if err != nil {
-			log.Printf("Fixing time in future failed %q: %v", path, err)
+	if !*touch && modified {
+		err := setFileTime(path, st.Atim, st.Mtim)
+		log.Printf("Preserving timestamp: %q %#v -> %v", path, st, err)
+	}
+	if *future {
+		if st.Atim.Sec > ws.timeSec || st.Ctim.Sec > ws.timeSec || st.Mtim.Sec > ws.timeSec {
+			log.Printf("Fixing time in future: %q %#v", path, st)
+			tv := syscall.NsecToTimespec(time.Now().UnixNano())
+			err := setFileTime(path, tv, tv)
+			if err != nil {
+				log.Printf("Fixing time in future failed %q: %v", path, err)
+			}
 		}
 	}
 	if *delme && info.IsDir() && strings.HasSuffix(path, "/DELME") {
 		deleteDir(path)
 	}
 	return nil
+}
+
+func setFileTime(path string, atime syscall.Timespec, mtime syscall.Timespec) error {
+	w := []syscall.Timespec{atime, mtime}
+	return syscall.UtimesNano(path, w)
+
 }
